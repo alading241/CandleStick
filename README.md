@@ -2,9 +2,9 @@
 CandleStick Plot
 
 Run:
-'''shell
+```shell
 python technicalanalysis.py
-'''
+```
 
 Sample Result:
 ![TSLA](https://raw.githubusercontent.com/victorgau/CandleStick/master/sample.png)
