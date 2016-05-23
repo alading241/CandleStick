@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import sys
 import datetime
 import numpy as np
 import math
@@ -11,6 +12,8 @@ from matplotlib.mlab import csv2rec
 from matplotlib.dates import num2date, date2num, IndexDateFormatter
 from matplotlib.ticker import  IndexLocator, FuncFormatter
 import bisect
+
+from dateutil.parser import parse
 
 from operator import itemgetter
 
@@ -53,7 +56,7 @@ def MA(x, n, type='simple'):
 def SMA(x, n):
     x = np.asarray(x)
     a = np.ones(len(x))
-    i = len(x) - 1    
+    i = len(x) - 1
     while i > 0:
         s = i - n
         if s < 0: s = 0
@@ -76,7 +79,7 @@ def SMA(x,n):
 def DonchianHi(x, n):
     x = np.asarray(x)
     a = np.ones(len(x))
-    i = len(x) - 1    
+    i = len(x) - 1
     while i > 0:
         s = i - n
         if s < 0: s = 0
@@ -88,7 +91,7 @@ def DonchianHi(x, n):
 def DonchianLo(x, n):
     x = np.asarray(x)
     a = np.ones(len(x))
-    i = len(x) - 1    
+    i = len(x) - 1
     while i > 0:
         s = i - n
         if s < 0: s = 0
@@ -120,14 +123,14 @@ def BB(x, n, nSTD=2.0):
         bbs[i, 3] = (bbs[i, 0] - bbs[i, 2]) / bbs[i, 1]
         bbs[i, 4] = bbs[i, 0] - bbs[i, 2]
         bbs[i, 5] = (x[i] - bbs[i, 2]) / bbs[i, 4] if bbs[i,4]!=0 else np.NaN
-    
+
     bbs[:n, 0] = np.NaN
     bbs[:n, 1] = np.NaN
     bbs[:n, 2] = np.NaN
     bbs[:n, 3] = np.NaN
     bbs[:n, 4] = np.NaN
     bbs[:n, 5] = np.NaN
-    
+
     return bbs
 
 def bb(prices, period, num_std_dev=2.0):
@@ -156,14 +159,14 @@ def bb(prices, period, num_std_dev=2.0):
         bbs[idx, 3] = (bbs[idx, 0] - bbs[idx, 2]) / bbs[idx, 1]
         bbs[idx, 4] = bbs[idx, 0] - bbs[idx, 2]
         bbs[idx, 5] = (prices[idx] - bbs[idx, 2]) / bbs[idx, 4] if bbs[idx,4]!=0 else np.NaN
-    
+
     bbs[idx, 0] = np.NaN
     bbs[idx, 1] = np.NaN
     bbs[idx, 2] = np.NaN
     bbs[idx, 3] = np.NaN
     bbs[idx, 4] = np.NaN
     bbs[idx, 5] = np.NaN
-    
+
     return bbs
 
 def RSI(prices, n=14):
@@ -229,105 +232,97 @@ def format_coord1(x, y):
 def format_coord2(x, y):
     return 'x=%s, y=%1.1fM' % (r.date[x+0.5], y*1e-6)
 
-startdate = datetime.date(2015,1,1)
-today = enddate = datetime.date.today()
 
-#ticker = '^DJI'
+if __name__=="__main__":
 
-ticker = 'TSLA'
-#ticker = '5484.TW'
-#ticker = 'AAPL'
-#ticker = 'HIMX'
-#ticker = '2330.TW'
+    if len(sys.argv)<3:
+        print u"Usage: python technicalanalysis.py ticker startdate [enddate]"
+        raise SystemExit
 
-fh = fetch_historical_yahoo(ticker, startdate, enddate)
-# a numpy record array with fields: date, open, high, low, close, volume, adj_close)
+    ticker = sys.argv[1]
+    startdate = parse(sys.argv[2])
 
-r = csv2rec(fh); fh.close()
-r.sort()
+    if len(sys.argv)==4:
+        enddate = sys.argv[3]
+    else:
+        enddate = datetime.date.today()
+
+    fh = fetch_historical_yahoo(ticker, startdate, enddate)
+    # a numpy record array with fields: date, open, high, low, close, volume, adj_close)
+
+    r = csv2rec(fh); fh.close()
+    r.sort()
 
 
-if len(r.date) == 0:
-    raise SystemExit
+    if len(r.date) == 0:
+        raise SystemExit
 
-tickdates = getListOfDates(startdate, enddate)
-tickindex = getDateIndex(r.date, tickdates)
-ticknames = getMonthNames(r.date, tickindex)
+    tickdates = getListOfDates(startdate, enddate)
+    tickindex = getDateIndex(r.date, tickdates)
+    ticknames = getMonthNames(r.date, tickindex)
 
-formatter =  IndexDateFormatter(date2num(r.date), '%m/%d/%y')
+    formatter =  IndexDateFormatter(date2num(r.date), '%m/%d/%y')
 
-millionformatter = FuncFormatter(millions)
-thousandformatter = FuncFormatter(thousands)
+    millionformatter = FuncFormatter(millions)
+    thousandformatter = FuncFormatter(thousands)
 
-fig = plt.figure()
-fig.subplots_adjust(bottom=0.1)
-fig.subplots_adjust(hspace=0)
+    fig = plt.figure()
+    fig.subplots_adjust(bottom=0.1)
+    fig.subplots_adjust(hspace=0)
 
-gs = gridspec.GridSpec(2, 1, height_ratios=[4, 1]) 
+    gs = gridspec.GridSpec(2, 1, height_ratios=[4, 1])
 
-ax0 = plt.subplot(gs[0])
+    ax0 = plt.subplot(gs[0])
 
-candles = candlestick2_ohlc(ax0, r.open, r.high, r.low, r.close, width=1, colorup='g', colordown='r')
+    candles = candlestick2_ohlc(ax0, r.open, r.high, r.low, r.close, width=1, colorup='g', colordown='r')
 
-ma05 = MA(r.adj_close, 5, type='simple')
-ma20 = MA(r.close, 20, type='simple')
-ma60 = MA(r.adj_close, 60, type='simple')
+    ma05 = MA(r.adj_close, 5, type='simple')
+    ma20 = MA(r.close, 20, type='simple')
+    ma60 = MA(r.adj_close, 60, type='simple')
 
-Don20Hi = DonchianHi(r.high, 20)
-Don20Lo = DonchianLo(r.low, 20)
+    Don20Hi = DonchianHi(r.high, 20)
+    Don20Lo = DonchianLo(r.low, 20)
 
-BB20 = BB(r.close, 20)
+    BB20 = BB(r.close, 20)
 
-ma05[:5]=np.NaN
-ma20[:20]=np.NaN
-ma60[:60]=np.NaN
+    ma05[:5]=np.NaN
+    ma20[:20]=np.NaN
+    ma60[:60]=np.NaN
 
-ax0.plot(ma05, color='black', lw=2, label='MA (5)')
-ax0.plot(ma20, color='blue', lw=2, label='MA (20)')
-ax0.plot(ma60, color='red', lw=2, label='MA (60)')
-ax0.plot(Don20Hi, color='blue', lw=2, ls='--', label='DonHi (20)')
-ax0.plot(Don20Lo, color='blue', lw=2, ls='--', label='DonLo (20)')
+    ax0.plot(ma05, color='black', lw=2, label='MA (5)')
+    ax0.plot(ma20, color='blue', lw=2, label='MA (20)')
+    ax0.plot(ma60, color='red', lw=2, label='MA (60)')
+    ax0.plot(Don20Hi, color='blue', lw=2, ls='--', label='DonHi (20)')
+    ax0.plot(Don20Lo, color='blue', lw=2, ls='--', label='DonLo (20)')
 
-ax0.plot(range(len(r.date)), BB20[:,0], color='black', lw=2, ls='--', label='BBU (20)')
-ax0.plot(range(len(r.date)), BB20[:,1], color='black', lw=2, ls='--', label='BBM (20)')
-ax0.plot(range(len(r.date)), BB20[:,2], color='black', lw=2, ls='--', label='BBD (20)')
-ax0.fill_between(range(len(r.date)), BB20[:,0],BB20[:,2], facecolor='#cccccc', alpha=0.5)
+    ax0.plot(range(len(r.date)), BB20[:,0], color='black', lw=2, ls='--', label='BBU (20)')
+    ax0.plot(range(len(r.date)), BB20[:,1], color='black', lw=2, ls='--', label='BBM (20)')
+    ax0.plot(range(len(r.date)), BB20[:,2], color='black', lw=2, ls='--', label='BBD (20)')
+    ax0.fill_between(range(len(r.date)), BB20[:,0],BB20[:,2], facecolor='#cccccc', alpha=0.5)
 
-ax0.set_xticks(tickindex)
-ax0.set_xticklabels(ticknames)
-ax0.format_coord=format_coord1
-ax0.legend(loc='best', shadow=True, fancybox=True)
-ax0.set_ylabel('Price($)', fontsize=16)
-ax0.set_title(ticker, fontsize=24, fontweight='bold')
-ax0.grid(True)
+    ax0.set_xticks(tickindex)
+    ax0.set_xticklabels(ticknames)
+    ax0.format_coord=format_coord1
+    ax0.legend(loc='best', shadow=True, fancybox=True)
+    ax0.set_ylabel('Price($)', fontsize=16)
+    ax0.set_title(ticker, fontsize=24, fontweight='bold')
+    ax0.grid(True)
 
-ax1 = plt.subplot(gs[1], sharex=ax0)
+    ax1 = plt.subplot(gs[1], sharex=ax0)
 
-vc = volume_overlay(ax1, r.open, r.close, r.volume, colorup='g', width=1)
+    vc = volume_overlay(ax1, r.open, r.close, r.volume, colorup='g', width=1)
 
-vma05 = MA(r.volume, 5, type='simple')
-vma20 = MA(r.volume, 20, type='simple')
-vma60 = MA(r.volume, 60, type='simple')
+    ax1.set_xticks(tickindex)
+    ax1.set_xticklabels(ticknames)
+    ax1.format_coord=format_coord2
 
-vma05[:5]=np.NaN
-vma20[:20]=np.NaN
-vma60[:60]=np.NaN
+    ax1.tick_params(axis='x',direction='out',length=5)
+    ax1.yaxis.set_major_formatter(millionformatter)
+    ax1.yaxis.tick_right()
+    ax1.yaxis.set_label_position("right")
+    ax1.set_ylabel('Volume', fontsize=16)
+    ax1.grid(True)
 
-ax1.plot(vma05, color='black', lw=2, label='MA (5)')
-ax1.plot(vma20, color='blue', lw=2, label='MA (20)')
-ax1.plot(vma60, color='red', lw=2, label='MA (60)')
+    plt.setp(ax0.get_xticklabels(), visible=False)
 
-ax1.set_xticks(tickindex)
-ax1.set_xticklabels(ticknames)
-ax1.format_coord=format_coord2
-
-ax1.tick_params(axis='x',direction='out',length=5)
-ax1.yaxis.set_major_formatter(millionformatter)
-ax1.yaxis.tick_right()
-ax1.yaxis.set_label_position("right")
-ax1.set_ylabel('Volume', fontsize=16)
-ax1.grid(True)
-
-plt.setp(ax0.get_xticklabels(), visible=False)
-
-plt.show()
+    plt.show()

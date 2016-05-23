@@ -1,9 +1,9 @@
 # CandleStick
 CandleStick Plot
 
-Run:
+Usage:
 ```shell
-python technicalanalysis.py
+python technicalanalysis.py startdate [enddate]
 ```
 
 Sample Result:
